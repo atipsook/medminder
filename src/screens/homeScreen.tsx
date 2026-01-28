@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import HeaderStats from '../components/HeaderStats';
 import HomePage from './HomePage';
-import Placeholder from '../components/Placeholder';
+
 
 interface Medicine {
   id: string;
@@ -60,7 +60,7 @@ const HomeScreen: React.FC<Props> = ({
         markAsTaken={markAsTaken}
         isTaken={isTaken}
       />
-      <Placeholder/>
+      
     </View>
    
   );
