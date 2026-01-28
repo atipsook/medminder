@@ -146,100 +146,53 @@ const Context: React.FC = () => {
     }
   };
 
-  const scheduleAllNotifications = async () => {
-    try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      
-      
-      const now = new Date();
-      console.log('📅 Current time:', now.toLocaleString());
-      
-      let scheduledCount = 0;
+const scheduleAllNotifications = async () => {
+  try {
+    // 1. Clear old notifications to avoid "phantom" alerts
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    
+    const now = new Date();
+    
+    for (const medicine of medicines) {
+      if (!medicine.times || !medicine.days) continue;
 
-      for (const medicine of medicines) {
-        if (!medicine.times || !medicine.days) continue;
+      for (const timeStr of medicine.times) {
+        const [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
+        
+        // Schedule for the next 7 days
+        for (let i = 0; i < 7; i++) {
+          const scheduleDate = new Date();
+          scheduleDate.setDate(now.getDate() + i);
+          scheduleDate.setHours(hours, minutes, 0, 0); // EXACT zero seconds
 
-        for (const timeStr of medicine.times) {
-          const [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
-          
-          if (isNaN(hours) || isNaN(minutes)) {
-            console.log('⚠️ Invalid time format:', timeStr);
-            continue;
-          }
+          const dayName = scheduleDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-          // Schedule for the next 30 days
-          for (let daysAhead = 0; daysAhead < 30; daysAhead++) {
-            const scheduleDate = new Date(now);
-            scheduleDate.setDate(scheduleDate.getDate() + daysAhead);
-            scheduleDate.setHours(hours, minutes, 0, 0);
-
-            const dayName = scheduleDate.toLocaleDateString('en-US', { weekday: 'long' });
-
-            // CRITICAL: Only schedule if time is in the future (with 1 minute buffer to avoid immediate firing)
-            const timeDiff = scheduleDate.getTime() - now.getTime();
-            const oneMinuteInMs = 60 * 1000;
-            
-            if (medicine.days.includes(dayName) && timeDiff > oneMinuteInMs) {
-              try {
-                const notificationId = await Notifications.scheduleNotificationAsync({
-                  content: {
-                    title: ' Time to Take Your Medicine',
-                    body: `${medicine.name}\nDosage: ${medicine.dosage}`,
-                    data: { 
-                      medicineId: medicine.id, 
-                      medicineName: medicine.name,
-                      time: timeStr,
-                      scheduledTime: scheduleDate.toISOString(),
-                    },
-                    sound: true,
-                    priority: Notifications.AndroidNotificationPriority.MAX,
-                    badge: 1,
-                  },
-                  trigger: {
-                    date: scheduleDate,
-                    channelId: Platform.OS === 'android' ? 'medicine-reminders' : undefined,
-                  },
-                });
-
-                scheduledCount++;
-                
-                // Calculate time until notification
-                const hoursUntil = Math.floor(timeDiff / (1000 * 60 * 60));
-                const minutesUntil = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                
-                console.log(`✓ Scheduled: ${medicine.name} for ${scheduleDate.toLocaleString()}`);
-                console.log(`  Fires in: ${hoursUntil}h ${minutesUntil}m (ID: ${notificationId})`);
-              } catch (err) {
-                console.error(`Error scheduling ${medicine.name}:`, err);
-              }
-            }
+          // Only schedule if it's the right day and in the future
+          if (medicine.days.includes(dayName) && scheduleDate > now) {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "💊 Time for Medicine",
+                body: `Take ${medicine.dosage} of ${medicine.name}`,
+                sound: 'default',
+                priority: Notifications.AndroidNotificationPriority.MAX, // Hits zero on Android
+                interruptionLevel: 'timeSensitive', // Hits zero on iOS
+                data: { medicineId: medicine.id },
+              },
+              trigger: {
+                // IMPORTANT: In newer Expo versions, use the DATE type for precision
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: scheduleDate,
+                channelId: 'medicine-reminders',
+              },
+            });
           }
         }
       }
-
-      console.log(`\n✅ Successfully scheduled ${scheduledCount} notifications`);
-      
-      // Verify scheduled notifications
-      const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
-      console.log(`📊 Total scheduled notifications in system: ${allScheduled.length}`);
-      
-      if (allScheduled.length > 0) {
-        console.log('\n📋 Next 3 notifications:');
-        allScheduled.slice(0, 3).forEach((notif, index) => {
-          if (notif.trigger && 'date' in notif.trigger) {
-            const triggerDate = new Date(notif.trigger.date * 1000); // Convert from Unix timestamp
-            console.log(`  ${index + 1}. ${triggerDate.toLocaleString()}`);
-          }
-        });
-      } else {
-        console.log('WARNING: No notifications were scheduled! Check your times and days.');
-      }
-      
-    } catch (error) {
-      console.error('Error scheduling notifications:', error);
-      Alert.alert('Error', 'Failed to schedule notifications. Please try again.');
     }
-  };
+  } catch (e) {
+    console.error("Failed to schedule:", e);
+  }
+};
 
   const cleanupOldDoses = () => {
     const now = Date.now();
