@@ -8,11 +8,11 @@ import AddMedicinePage from './AddMedicinePage';
 import AllMedicinesPage from './AllMedicinePage';
 import Navigation from './Navigation';
 
-// FIXED: Updated for iOS - use shouldShowBanner instead of deprecated shouldShowAlert
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true, // For Android
-    shouldShowBanner: true, // For iOS (new)
+    shouldShowAlert: true,  
+    shouldShowBanner: true, 
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -63,7 +63,7 @@ const Context: React.FC = () => {
     loadData();
     registerForPushNotificationsAsync();
 
-    // Only listen for when user taps notification, don't show anything when received
+    
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       console.log('👆 Notification tapped:', response);
       setCurrentScreen('home');
@@ -148,7 +148,6 @@ const Context: React.FC = () => {
 
 const scheduleAllNotifications = async () => {
   try {
-    // 1. Clear old notifications to avoid "phantom" alerts
     await Notifications.cancelAllScheduledNotificationsAsync();
     
     const now = new Date();
@@ -171,7 +170,7 @@ const scheduleAllNotifications = async () => {
           if (medicine.days.includes(dayName) && scheduleDate > now) {
             await Notifications.scheduleNotificationAsync({
               content: {
-                title: "💊 Time for Medicine",
+                title: " Time for Medicine",
                 body: `Take ${medicine.dosage} of ${medicine.name}`,
                 sound: 'default',
                 priority: Notifications.AndroidNotificationPriority.MAX, // Hits zero on Android
@@ -281,7 +280,7 @@ const scheduleAllNotifications = async () => {
     const updatedMedicines = [...medicines, newMedicine];
     await saveData(updatedMedicines);
 
-    // Simple success message without mentioning notifications
+    
     Alert.alert('Success', `${medicineName} has been added successfully!`);
 
     setMedicineName('');
